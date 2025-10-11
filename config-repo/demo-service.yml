@@ -1,0 +1,9 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: demo-service
+
+custom:
+  message: "Config específica do demo-service"
