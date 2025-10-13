@@ -1,0 +1,4 @@
+com/microstack/App.class
+com/microstack/demoservice/DemoServiceApplication.class
+com/microstack/demoservice/MessageController.class
+com/microstack/demoservice/DemoController.class

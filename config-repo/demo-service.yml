@@ -1,9 +1,20 @@
-server:
-  port: 8081
-
 spring:
   application:
     name: demo-service
 
-custom:
-  message: "Config específica do demo-service"
+server:
+  port: 0   # porta aleatória (facilita rodar várias instâncias)
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+
+# (depois, quando tiver Eureka subindo)
+# eureka:
+#   client:
+#     register-with-eureka: true
+#     fetch-registry: true
+#     service-url:
+#       defaultZone: http://localhost:8761/eureka/

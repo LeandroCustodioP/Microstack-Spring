@@ -8,5 +8,7 @@ spring:
     config:
       server:
         git:
-          uri: file:///${user.dir}/../config-repo
+          # use caminho ABSOLUTO e codifique espaços como %20
+          uri: file:///home/leandro/Área%20de%20trabalho/projetos/Microstack%20Spring/config-repo
           default-label: main
+          clone-on-start: true   # faz o server clonar/validar no startup e mostra erro claro nos logs
