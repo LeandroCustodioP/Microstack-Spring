@@ -1,0 +1,25 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# IntelliJ / VSCode / Eclipse
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

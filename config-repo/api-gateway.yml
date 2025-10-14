@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: demo-service
+          uri: lb://demo-service
+          predicates:
+            - Path=/demo/**
+          filters:
+            - StripPrefix=1
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
