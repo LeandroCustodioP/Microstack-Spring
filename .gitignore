@@ -23,3 +23,22 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Build
+**/target/
+!**/src/main/**
+!**/src/test/**
+
+# Sistema operacional
+*.swp
+*.swo
+
+# Spring Boot
+application-*.yml
+application-*.properties
+
+# IDEs adicionais
+*.log
+*.class
+bin/
+out/
