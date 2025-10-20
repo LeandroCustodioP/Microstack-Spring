@@ -1,0 +1,52 @@
+version: "3.9"
+
+name: microstack
+networks:
+  microstack-net:
+
+services:
+  # -------------------------------
+  # Config Server (modo NATIVE)
+  # -------------------------------
+  config-server:
+    profiles: ["native"]
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    image: microstack/config-server:latest
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      # ativa modo 'native' e aponta para a pasta montada
+      SPRING_PROFILES_ACTIVE: native
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/configs
+      # opcional: expor actuator/health se não estiver no application.yml
+      # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+    volumes:
+      # monta seu repo local (STATEFUL)
+      - ./config-repo:/configs:ro
+    restart: unless-stopped
+    networks: [microstack-net]
+
+  # -------------------------------
+  # Config Server (modo GIT)
+  # -------------------------------
+  config-server-git:
+    profiles: ["git"]
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    image: microstack/config-server:latest
+    container_name: config-server-git
+    ports:
+      - "8888:8888"
+    environment:
+      SPRING_CLOUD_CONFIG_SERVER_GIT_URI: ${CONFIG_GIT_URI}
+      SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: ${CONFIG_GIT_LABEL:-main}
+      SPRING_CLOUD_CONFIG_SERVER_GIT_SEARCHPATHS: ${CONFIG_GIT_SEARCHPATHS:-.}
+      # Para repositório privado (opcional):
+      # SPRING_CLOUD_CONFIG_SERVER_GIT_USERNAME: ${CONFIG_GIT_USERNAME}
+      # SPRING_CLOUD_CONFIG_SERVER_GIT_PASSWORD: ${CONFIG_GIT_PASSWORD}
+    restart: unless-stopped
+    networks: [microstack-net]
