@@ -1,25 +1,19 @@
+# Configurações específicas do Demo Service
 spring:
   application:
     name: demo-service
 
+server:
+  port: ${PORT:0}  # Porta aleatória por padrão (facilita escalabilidade)
+
+# Configurações específicas para o ambiente Docker
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
-
-server:
-  port: 0   # porta aleatória (facilita rodar várias instâncias)
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "health,info"
-
-# (depois, quando tiver Eureka subindo)
-# eureka:
-#   client:
-#     register-with-eureka: true
-#     fetch-registry: true
-#     service-url:
-#       defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://eureka:8761/eureka

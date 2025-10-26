@@ -1,2 +1,31 @@
+# Configurações globais compartilhadas por todos os serviços
+spring:
+  application:
+    name: ${spring.application.name:default}
+
+# Configurações do Eureka Client (padrão para todos os serviços)
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true
+
+# Configurações do Actuator (padrão para todos os serviços)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      
+# Informações da aplicação
 info:
-  app: Microstack config global
+  app:
+    name: ${spring.application.name}
+    description: Microstack Spring Cloud Demo
+    version: 1.0.0

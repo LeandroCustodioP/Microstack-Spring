@@ -4,19 +4,64 @@ server:
 spring:
   cloud:
     gateway:
+      # Habilita descoberta automática de serviços
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
+      
+      # Configuração de rotas
+      routes:
+        # Demo Service
+        - id: demo-service
+          uri: lb://demo-service
+          predicates:
+            - Path=/api/demo/**
+          filters:
+            - StripPrefix=2
+            - name: Retry
+              args:
+                retries: 3
+                methods: GET
+            - name: CircuitBreaker
+              args:
+                name: demo-service-cb
+                fallbackUri: forward:/fallback/demo
+
+# Configurações do Resilience4j para Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+  retry:
+    configs:
+      default:
+        maxRetryAttempts: 3
+        waitDuration: 1000
+
+# Configurações específicas para ambiente Docker
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
       routes:
         - id: demo-service
           uri: lb://demo-service
           predicates:
-            - Path=/demo/**
+            - Path=/api/demo/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://eureka:8761/eureka

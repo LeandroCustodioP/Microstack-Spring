@@ -1,15 +1,47 @@
-version: "3.9"
-
 name: microstack
+
 networks:
   microstack-net:
+    name: microstack-network
+    driver: bridge
 
 services:
   # -------------------------------
-  # Config Server (modo NATIVE)
+  # Eureka Server - Service Discovery
+  # -------------------------------
+  eureka:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    image: microstack/eureka-server:latest
+    container_name: eureka
+    ports:
+      - "8761:8761"
+    environment:
+      # Configurações gerais
+      SPRING_PROFILES_ACTIVE: docker
+      
+      # Configurações do Eureka Server
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
+      EUREKA_CLIENT_FETCH_REGISTRY: "false"
+      
+      # Monitoramento
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8761/actuator/health | grep '\"status\":\"UP\"' || exit 1"]
+      interval: 20s
+      timeout: 3s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - microstack-net
+
+  # -------------------------------
+  # Config Server - Configuração Centralizada
   # -------------------------------
   config-server:
-    profiles: ["native"]
     build:
       context: ./config-server
       dockerfile: Dockerfile
@@ -18,35 +50,120 @@ services:
     ports:
       - "8888:8888"
     environment:
-      # ativa modo 'native' e aponta para a pasta montada
+      # Configurações gerais
       SPRING_PROFILES_ACTIVE: native
+      SPRING_APPLICATION_NAME: config-server
+      
+      # Config Server
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/configs
-      # opcional: expor actuator/health se não estiver no application.yml
-      # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      
+      # Eureka Client
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8761/eureka
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: "true"
+      EUREKA_CLIENT_FETCH_REGISTRY: "true"
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      
+      # Monitoramento
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
     volumes:
-      # monta seu repo local (STATEFUL)
       - ./config-repo:/configs:ro
+    depends_on:
+      eureka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8888/actuator/health | grep '\"status\":\"UP\"' || exit 1"]
+      interval: 20s
+      timeout: 3s
+      retries: 10
+      start_period: 40s
     restart: unless-stopped
-    networks: [microstack-net]
+    networks:
+      - microstack-net
 
   # -------------------------------
-  # Config Server (modo GIT)
+  # API Gateway - Roteamento e Load Balancing
   # -------------------------------
-  config-server-git:
-    profiles: ["git"]
+  api-gateway:
     build:
-      context: ./config-server
+      context: ./api-gateway
       dockerfile: Dockerfile
-    image: microstack/config-server:latest
-    container_name: config-server-git
+    image: microstack/api-gateway:latest
+    container_name: api-gateway
     ports:
-      - "8888:8888"
+      - "8080:8080"
     environment:
-      SPRING_CLOUD_CONFIG_SERVER_GIT_URI: ${CONFIG_GIT_URI}
-      SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: ${CONFIG_GIT_LABEL:-main}
-      SPRING_CLOUD_CONFIG_SERVER_GIT_SEARCHPATHS: ${CONFIG_GIT_SEARCHPATHS:-.}
-      # Para repositório privado (opcional):
-      # SPRING_CLOUD_CONFIG_SERVER_GIT_USERNAME: ${CONFIG_GIT_USERNAME}
-      # SPRING_CLOUD_CONFIG_SERVER_GIT_PASSWORD: ${CONFIG_GIT_PASSWORD}
+      # Configurações gerais
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_APPLICATION_NAME: api-gateway
+      
+      # Config Server
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      
+      # Eureka Client
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8761/eureka
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      
+      # Gateway
+      SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_ENABLED: "true"
+      SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_LOWER_CASE_SERVICE_ID: "true"
+      
+      # Monitoramento
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,gateway
+      
+      # Circuit Breaker e Retry
+      RESILIENCE4J_CIRCUITBREAKER_CONFIGS_DEFAULT_SLIDING_WINDOW_SIZE: "10"
+      RESILIENCE4J_CIRCUITBREAKER_CONFIGS_DEFAULT_FAILURE_RATE_THRESHOLD: "50"
+      RESILIENCE4J_CIRCUITBREAKER_CONFIGS_DEFAULT_WAIT_DURATION_IN_OPEN_STATE: "10000"
+      RESILIENCE4J_RETRY_CONFIGS_DEFAULT_MAX_RETRY_ATTEMPTS: "3"
+      RESILIENCE4J_RETRY_CONFIGS_DEFAULT_WAIT_DURATION: "1000"
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep '\"status\":\"UP\"' || exit 1"]
+      interval: 20s
+      timeout: 3s
+      retries: 10
+      start_period: 40s
     restart: unless-stopped
-    networks: [microstack-net]
+    networks:
+      - microstack-net
+
+  # -------------------------------
+  # Demo Service - Serviço de Exemplo
+  # -------------------------------
+  demo-service:
+    build:
+      context: ./demo-service
+      dockerfile: Dockerfile
+    image: microstack/demo-service:latest
+    container_name: demo-service
+    ports:
+      - "8081:8081"
+    environment:
+      # Configurações gerais
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_APPLICATION_NAME: demo-service
+      SERVER_PORT: 8081
+      
+      # Config Server
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      
+      # Eureka Client
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8761/eureka
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      
+      # Monitoramento
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/actuator/health | grep '\"status\":\"UP\"' || exit 1"]
+      interval: 20s
+      timeout: 3s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - microstack-net

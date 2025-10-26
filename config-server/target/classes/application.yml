@@ -12,3 +12,18 @@ spring:
           uri: file:///home/leandro/Área%20de%20trabalho/projetos/Microstack%20Spring/config-repo
           default-label: main
           clone-on-start: true   # faz o server clonar/validar no startup e mostra erro claro nos logs
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

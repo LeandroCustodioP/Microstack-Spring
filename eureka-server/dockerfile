@@ -1,0 +1,28 @@
+# ====== Build ======
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /app
+
+# Copia pom e baixa dependências pra cachear
+COPY pom.xml .
+RUN mvn -q -DskipTests dependency:go-offline
+
+# Copia código e compila
+COPY src ./src
+RUN mvn -q -DskipTests package
+
+# ====== Runtime ======
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+
+# Copia o JAR gerado do estágio de build
+COPY --from=build /app/target/*-SNAPSHOT.jar /app/app.jar
+# Se o seu artefato NÃO tiver "-SNAPSHOT", troque por:
+# COPY --from=build /app/target/*.jar /app/app.jar
+
+EXPOSE 8761
+
+HEALTHCHECK --interval=20s --timeout=3s --retries=10 \
+  CMD curl -fsS http://localhost:8761/actuator/health | grep '"status":"UP"' || exit 1
+
+ENV SPRING_PROFILES_ACTIVE=docker
+ENTRYPOINT ["java","-jar","/app/app.jar"]
